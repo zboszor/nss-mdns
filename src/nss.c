@@ -87,6 +87,7 @@ enum nss_status _nss_mdns_gethostbyname_impl(const char* name, int af,
 
     int name_allowed;
     FILE* mdns_allow_file = NULL;
+    char fqdn[128];
 
 #ifdef NSS_IPV4_ONLY
     if (af == AF_UNSPEC) {
@@ -118,6 +119,23 @@ enum nss_status _nss_mdns_gethostbyname_impl(const char* name, int af,
 #ifndef MDNS_MINIMAL
     mdns_allow_file = fopen(MDNS_ALLOW_FILE, "r");
 #endif
+    if (strchr(name, '.') == NULL) {
+        char tmp[64], *tmp1 = NULL;
+
+        if (!gethostname(tmp, sizeof(tmp))) {
+            tmp1 = strchr(tmp, '.');
+            if (tmp1)
+                tmp1++;
+        }
+
+        if (!tmp1 && !getdomainname(tmp, sizeof(tmp)))
+            tmp1 = tmp;
+
+        if (tmp1) {
+            sprintf(fqdn, "%s.%s", name, tmp1);
+            name = fqdn;
+        }
+    }
     name_allowed = verify_name_allowed_with_soa(name, mdns_allow_file);
 #ifndef MDNS_MINIMAL
     if (mdns_allow_file)
